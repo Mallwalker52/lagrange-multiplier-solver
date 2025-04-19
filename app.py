@@ -3,15 +3,15 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify
 
-st.title("Lagrange Multipliers Solver")
+st.title("Flexible Lagrange Multipliers Solver")
 
-st.write("Enter your objective function and two constraints below:")
+st.write("Enter your objective function and one or two constraints below:")
 
 # Form inputs
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
-vars_input = st.text_input("Variables (comma-separated, example: x, y, z)", value="x, y, z")
-constraint1_input = st.text_input("Constraint 1 (example: x + y + z = 1)", value="x + y + z = 1")
-constraint2_input = st.text_input("Constraint 2 (example: x - y = 0)", value="x - y = 0")
+vars_input = st.text_input("Variables (comma-separated, e.g., x, y, z)", value="x, y, z")
+constraint1_input = st.text_input("Constraint 1 (required, e.g., x + y + z = 1)", value="x + y + z = 1")
+constraint2_input = st.text_input("Constraint 2 (optional, e.g., x - y = 0)", value="")
 
 if st.button("Solve"):
     try:
@@ -29,15 +29,21 @@ if st.button("Solve"):
 
         # Parse constraints
         constraints = []
-        for c in [constraint1_input, constraint2_input]:
-            if "=" in c:
-                left, right = c.split("=")
+        if constraint1_input:
+            if "=" in constraint1_input:
+                left, right = constraint1_input.split("=")
                 constraints.append(Eq(sympify(left), sympify(right)))
             else:
-                constraints.append(Eq(sympify(c), 0))
+                constraints.append(Eq(sympify(constraint1_input), 0))
+        if constraint2_input:
+            if "=" in constraint2_input:
+                left, right = constraint2_input.split("=")
+                constraints.append(Eq(sympify(left), sympify(right)))
+            else:
+                constraints.append(Eq(sympify(constraint2_input), 0))
 
         # Create Lagrangian
-        lambdas = symbols(['lam1', 'lam2'])
+        lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
