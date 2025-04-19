@@ -6,7 +6,7 @@ from sympy import symbols, diff, solve, Eq, sympify
 st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
 
 # Instructions Section
-with st.expander("📚 Instructions (Click to Expand)", expanded=True):
+with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
 - **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
@@ -15,7 +15,7 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=True):
 - **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
 - **Variables** must be separated by commas (e.g., `x, y, z`)
 - **If you have no second constraint**, leave it blank
-- The app automatically handles `^` by converting it internally to proper Python powers
+- The app automatically handles `^` by converting it internally to Python powers
 
 If you follow these rules, you should have no issues. Happy solving! 🚀
     """)
