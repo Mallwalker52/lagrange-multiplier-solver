@@ -1,11 +1,21 @@
 # app.py
 
-import gradio as gr
+import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify
 
-def lagrange_solver(f_input, vars_input, constraint1_input, constraint2_input):
+st.title("Lagrange Multipliers Solver")
+
+st.write("Enter your objective function and two constraints below:")
+
+# Form inputs
+f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
+vars_input = st.text_input("Variables (comma-separated, example: x, y, z)", value="x, y, z")
+constraint1_input = st.text_input("Constraint 1 (example: x + y + z = 1)", value="x + y + z = 1")
+constraint2_input = st.text_input("Constraint 2 (example: x - y = 0)", value="x - y = 0")
+
+if st.button("Solve"):
     try:
-        # Preprocess input: replace ^ with **
+        # Preprocess input
         f_input = f_input.replace("^", "**")
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
@@ -32,7 +42,7 @@ def lagrange_solver(f_input, vars_input, constraint1_input, constraint2_input):
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
 
-        # Create system of equations
+        # Set up system of equations
         system = []
         for v in variables:
             system.append(Eq(diff(L, v), 0))
@@ -44,34 +54,17 @@ def lagrange_solver(f_input, vars_input, constraint1_input, constraint2_input):
         solutions = solve(system, all_symbols, dict=True)
 
         if not solutions:
-            return "No solutions found."
-
-        result = ""
-        for idx, sol in enumerate(solutions, 1):
-            result += f"Solution {idx}:\n"
-            for var in all_symbols:
-                if var in sol:
-                    result += f"  {var} = {sol[var]}\n"
-            f_val = f.subs(sol)
-            result += f"  Objective function value: {f_val}\n\n"
-        
-        return result
+            st.error("No solutions found.")
+        else:
+            for idx, sol in enumerate(solutions, 1):
+                st.success(f"Solution {idx}:")
+                for var in all_symbols:
+                    if var in sol:
+                        st.write(f"**{var}** = {sol[var]}")
+                # Evaluate f at solution
+                f_val = f.subs(sol)
+                st.write(f"**Objective function value** = {f_val}")
+                st.markdown("---")
 
     except Exception as e:
-        return f"Error: {str(e)}"
-
-# Build the Gradio interface
-demo = gr.Interface(
-    fn=lagrange_solver,
-    inputs=[
-        gr.Textbox(label="Objective Function (f)"),
-        gr.Textbox(label="Variables (comma-separated, e.g., x, y, z)"),
-        gr.Textbox(label="Constraint 1 (e.g., x + y + z = 1)"),
-        gr.Textbox(label="Constraint 2 (e.g., x - y = 0)")
-    ],
-    outputs="text",
-    title="Lagrange Multipliers Solver",
-    description="Enter your function and two constraints. Outputs critical points and objective function value."
-)
-
-demo.launch()
+        st.error(f"Error: {str(e)}")
