@@ -3,7 +3,7 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify
 
-st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
+st.title("Lagrange Multipliers Calculator")
 
 # Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
