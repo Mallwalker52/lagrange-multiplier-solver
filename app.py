@@ -5,7 +5,22 @@ from sympy import symbols, diff, solve, Eq, sympify
 
 st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
 
-st.write("Enter your objective function and one or two constraints below:")
+# Instructions Section
+with st.expander("📚 Instructions (Click to Expand)", expanded=True):
+    st.markdown("""
+**How to Enter Inputs:**
+- **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
+- **Exponents:** use `^` for powers (e.g., `x^2` means x squared)
+- **Square Roots:** write as `(expression)^(1/2)` (e.g., `(x*y)^(1/2)` means √(xy))
+- **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
+- **Variables** must be separated by commas (e.g., `x, y, z`)
+- **If you have no second constraint**, leave it blank
+- The app automatically handles `^` by converting it internally to proper Python powers
+
+If you follow these rules, you should have no issues. Happy solving! 🚀
+    """)
+
+st.write("Fill out your function, variables, and constraint(s) below:")
 
 # Form inputs
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
@@ -29,7 +44,7 @@ if st.button("Solve"):
         # Parse function
         original_f = sympify(f_input)
 
-        # Adjust function based on optimization type (negate for maximization later at evaluation)
+        # Adjust function based on optimization type
         f = original_f
 
         # Parse constraints
