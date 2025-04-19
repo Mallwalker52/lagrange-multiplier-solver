@@ -3,7 +3,7 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify
 
-st.title("Flexible Lagrange Multipliers Solver")
+st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
 
 st.write("Enter your objective function and one or two constraints below:")
 
@@ -12,6 +12,8 @@ f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="
 vars_input = st.text_input("Variables (comma-separated, e.g., x, y, z)", value="x, y, z")
 constraint1_input = st.text_input("Constraint 1 (required, e.g., x + y + z = 1)", value="x + y + z = 1")
 constraint2_input = st.text_input("Constraint 2 (optional, e.g., x - y = 0)", value="")
+
+optimization_type = st.radio("Do you want to minimize or maximize?", ("Minimize", "Maximize"))
 
 if st.button("Solve"):
     try:
@@ -26,6 +28,10 @@ if st.button("Solve"):
 
         # Parse function
         f = sympify(f_input)
+
+        # Adjust function based on optimization type
+        if optimization_type == "Maximize":
+            f = -f
 
         # Parse constraints
         constraints = []
@@ -68,7 +74,7 @@ if st.button("Solve"):
                     if var in sol:
                         st.write(f"**{var}** = {sol[var]}")
                 # Evaluate f at solution
-                f_val = f.subs(sol)
+                f_val = sympify(f_input).subs(sol)
                 st.write(f"**Objective function value** = {f_val}")
                 st.markdown("---")
 
