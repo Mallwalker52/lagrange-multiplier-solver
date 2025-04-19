@@ -27,11 +27,10 @@ if st.button("Solve"):
         variables = symbols(var_names)
 
         # Parse function
-        f = sympify(f_input)
+        original_f = sympify(f_input)
 
-        # Adjust function based on optimization type
-        if optimization_type == "Maximize":
-            f = -f
+        # Adjust function based on optimization type (negate for maximization later at evaluation)
+        f = original_f
 
         # Parse constraints
         constraints = []
@@ -68,15 +67,28 @@ if st.button("Solve"):
         if not solutions:
             st.error("No solutions found.")
         else:
-            for idx, sol in enumerate(solutions, 1):
-                st.success(f"Solution {idx}:")
-                for var in all_symbols:
-                    if var in sol:
-                        st.write(f"**{var}** = {sol[var]}")
-                # Evaluate f at solution
-                f_val = sympify(f_input).subs(sol)
-                st.write(f"**Objective function value** = {f_val}")
-                st.markdown("---")
+            best_solution = None
+            best_value = None
+
+            for sol in solutions:
+                f_val = original_f.subs(sol)
+
+                if optimization_type == "Minimize":
+                    if best_value is None or f_val < best_value:
+                        best_value = f_val
+                        best_solution = sol
+                else:  # Maximize
+                    if best_value is None or f_val > best_value:
+                        best_value = f_val
+                        best_solution = sol
+
+            # Display best solution
+            st.success(f"Best Solution ({optimization_type}):")
+            for var in all_symbols:
+                if var in best_solution:
+                    st.write(f"**{var}** = {best_solution[var]}")
+            st.write(f"**Objective function value** = {best_value}")
+            st.markdown("---")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
