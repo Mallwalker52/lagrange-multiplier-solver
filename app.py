@@ -1,7 +1,8 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, solve, Eq, sympify, latex
+from sympy import symbols, diff, Eq, sympify, latex, nsolve, Matrix
+from sympy.core.sympify import SympifyError
 
 st.title("Lagrange Multipliers Solver")
 
@@ -17,6 +18,7 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
 - **Variables** must be separated by commas (e.g., `x, y, z`)
 - **If you have no second constraint**, leave it blank
 - The app automatically handles `^` by converting it internally to Python powers
+- **Note:** All answers will be approximate decimals for faster solving.
 
 If you follow these rules, you should have no issues. Happy solving! 🚀
     """)
@@ -49,7 +51,7 @@ if st.button("Solve"):
         constraint2_input = constraint2_input.replace("^", "**")
 
         # Parse function
-        original_f = sympify(f_input, rational=True)  # rationalize floats
+        original_f = sympify(f_input, rational=True)
 
         # Adjust function based on optimization type
         f = original_f
@@ -78,82 +80,58 @@ if st.button("Solve"):
         # Set up system of equations
         system = []
         for v in variables:
-            system.append(Eq(diff(L, v), 0))
+            system.append(diff(L, v))
         for constraint in constraints:
-            system.append(constraint)
+            system.append(constraint.lhs - constraint.rhs)
 
-        # Solve
+        # Solve using nsolve (numerical)
         all_symbols = list(variables) + list(lambdas)
-        solutions = solve(system, all_symbols, dict=True)
+        guess = [1]*len(all_symbols)
 
-        if not solutions:
-            st.error("No solutions found.")
+        # Try to solve
+        sol = nsolve(system, all_symbols, guess)
+        sol_dict = dict(zip(all_symbols, sol))
+
+        # Apply positivity filtering
+        meets_positivity = True
+        for v in var_names:
+            if positivity_requirements[v]:
+                if sol_dict[symbols(v)] < 0:
+                    meets_positivity = False
+                    break
+
+        if not meets_positivity:
+            st.error("The solution does not satisfy the positivity constraints.")
         else:
-            # Apply positivity filtering
-            filtered_solutions = []
-            for sol in solutions:
-                meets_positivity = True
-                for v in var_names:
-                    if positivity_requirements[v]:
-                        if sol[symbols(v)] < 0:
-                            meets_positivity = False
-                            break
-                if meets_positivity:
-                    filtered_solutions.append(sol)
+            # Display the solution
+            st.success(f"Solution ({optimization_type}):")
 
-            if not filtered_solutions:
-                st.error("No solutions satisfy the positivity constraints.")
-            else:
-                best_solutions = []
-                best_value = None
+            point_vars = []
+            point_vals = []
+            lambdas_display = []
 
-                for sol in filtered_solutions:
-                    f_val = original_f.subs(sol)
+            for var in all_symbols:
+                var_name = latex(var)
+                value = latex(sol_dict[var].evalf(6))
+                if var_name.startswith('lam'):
+                    number = var_name[3:]
+                    var_name = f"\\lambda_{{{number}}}"
+                    lambdas_display.append(f"{var_name} = {value}")
+                else:
+                    point_vars.append(var_name)
+                    point_vals.append(value)
 
-                    if optimization_type == "Minimize":
-                        if best_value is None or f_val < best_value:
-                            best_value = f_val
-                            best_solutions = [sol]
-                        elif f_val == best_value:
-                            best_solutions.append(sol)
-                    else:  # Maximize
-                        if best_value is None or f_val > best_value:
-                            best_value = f_val
-                            best_solutions = [sol]
-                        elif f_val == best_value:
-                            best_solutions.append(sol)
+            ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
+            st.latex(ordered_pair_latex)
 
-                # Display all best solutions
-                st.success(f"Best Solution(s) ({optimization_type}):")
-                for idx, sol in enumerate(best_solutions, 1):
-                    st.write(f"**Solution {idx}:**")
+            if lambdas_display:
+                st.write("**Lagrange multipliers:**")
+                st.latex(r" \\ ".join(lambdas_display))
 
-                    point_vars = []
-                    point_vals = []
-                    lambdas_display = []
-
-                    for var in all_symbols:
-                        if var in sol:
-                            var_name = latex(var)
-                            value = latex(sol[var])
-                            if var_name.startswith('lam'):
-                                number = var_name[3:]
-                                var_name = f"\\lambda_{{{number}}}"
-                                lambdas_display.append(f"{var_name} = {value}")
-                            else:
-                                point_vars.append(var_name)
-                                point_vals.append(value)
-
-                    ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
-                    st.latex(ordered_pair_latex)
-
-                    if lambdas_display:
-                        st.write("**Lagrange multipliers:**")
-                        st.latex(r" \\ ".join(lambdas_display))
-
-                    st.write(f"**Objective function value:**")
-                    st.latex(latex(best_value))
-                    st.markdown("---")
+            obj_value = original_f.subs(sol_dict)
+            st.write(f"**Objective function value:**")
+            st.latex(latex(obj_value.evalf(6)))
+            st.markdown("---")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
