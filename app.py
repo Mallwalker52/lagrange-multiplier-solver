@@ -3,8 +3,10 @@
 import streamlit as st
 from sympy import symbols, diff, Eq, solve, sympify, latex
 
+# Title
 st.title("Lagrange Multipliers Solver")
 
+# Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
@@ -33,6 +35,7 @@ positivity_requirements = {}
 for v in var_names:
     positivity_requirements[v] = st.checkbox(f"Require {v} ≥ 0", value=False)
 
+# Solve button
 if st.button("Solve"):
     try:
         # Preprocessing
@@ -75,29 +78,45 @@ if st.button("Solve"):
         if not solutions:
             st.error("No solutions found.")
         else:
-            st.success(f"Solution ({optimization_type}):")
-
-            for idx, sol in enumerate(solutions, 1):
-                # Check positivity
+            # Filter positivity first
+            filtered_solutions = []
+            for sol in solutions:
                 meets_positivity = True
                 for v in var_names:
                     if positivity_requirements[v]:
                         if sol[symbols(v)].evalf() < 0:
                             meets_positivity = False
                             break
-                if not meets_positivity:
-                    continue
+                if meets_positivity:
+                    filtered_solutions.append(sol)
 
-                st.write(f"**Solution {idx}:**")
+            if not filtered_solutions:
+                st.error("No solutions satisfy the positivity constraints.")
+            else:
+                # Evaluate objective function at each solution
+                scored_solutions = []
+                for sol in filtered_solutions:
+                    obj_value = f.subs(sol).evalf()
+                    scored_solutions.append((obj_value, sol))
+
+                # Pick best based on Minimize or Maximize
+                if optimization_type == "Minimize":
+                    best_solution = min(scored_solutions, key=lambda x: x[0])
+                else:
+                    best_solution = max(scored_solutions, key=lambda x: x[0])
+
+                best_value, best_sol = best_solution
+
+                st.success(f"Best Solution ({optimization_type}):")
 
                 # Exact and Decimal Display
                 exact_display = []
                 decimal_display = []
 
                 for var in all_symbols:
-                    if var in sol:
+                    if var in best_sol:
                         var_name = latex(var)
-                        var_value = sol[var]
+                        var_value = best_sol[var]
                         var_value_decimal = var_value.evalf(6)
 
                         if var_name.startswith('lam'):
@@ -113,7 +132,7 @@ if st.button("Solve"):
                 st.latex(r" \\ ".join(decimal_display))
 
                 # Objective function value
-                obj_value_exact = f.subs(sol)
+                obj_value_exact = f.subs(best_sol)
                 obj_value_decimal = obj_value_exact.evalf(6)
 
                 st.write("**Objective function value:**")
