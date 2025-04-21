@@ -2,40 +2,31 @@
 
 import streamlit as st
 from sympy import symbols, diff, Eq, nsolve, sympify, latex
-from sympy import Matrix
 
 st.title("Lagrange Multipliers Solver")
 
-# Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
-- **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
-- **Exponents:** use `^` for powers (e.g., `x^2` means x squared)
-- **Fractional powers** like `x^(0.4)` are fully supported.
-- **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
-- **Variables** must be separated by commas (e.g., `x, y, z`)
-- **If you have no second constraint**, leave it blank.
-- Solutions will be given as **decimal approximations**.
-
-If you follow these rules, you should have no issues. Happy solving! 🚀
+- Use explicit multiplication: `2*(x*y)`, not `2(xy)`
+- Use `^` for powers (e.g., `x^2`)
+- Fractional powers like `x^(0.4)` are allowed
+- Constraints must use `=`
+- Separate variables by commas (e.g., `x, y, z`)
+- If no second constraint, leave blank
+- All solutions will be given as **decimal approximations**.
     """)
 
-st.write("Fill out your function, variables, and constraint(s) below:")
-
-# Form inputs
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
-vars_input = st.text_input("Variables (comma-separated, e.g., x, y, z)", value="x, y, z")
+vars_input = st.text_input("Variables (comma-separated)", value="x, y, z")
 constraint1_input = st.text_input("Constraint 1 (required)", value="x + y + z = 1")
 constraint2_input = st.text_input("Constraint 2 (optional)", value="")
 
 optimization_type = st.radio("Do you want to minimize or maximize?", ("Minimize", "Maximize"))
 
-# Parse variables early so we can add positivity checkboxes
 var_names = [v.strip() for v in vars_input.split(",") if v.strip()]
 variables = symbols(var_names)
 
-# Add positivity checkboxes dynamically
 st.write("**Optional: Require variables to be positive (≥ 0)**")
 positivity_requirements = {}
 for v in var_names:
@@ -43,13 +34,12 @@ for v in var_names:
 
 if st.button("Solve"):
     try:
-        # Preprocess input
         f_input = f_input.replace("^", "**")
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
 
-        # Parse function and constraints numerically
         f = sympify(f_input).evalf()
+
         constraints = []
         if constraint1_input:
             if "=" in constraint1_input:
@@ -64,28 +54,24 @@ if st.button("Solve"):
             else:
                 constraints.append(Eq(sympify(constraint2_input).evalf(), 0))
 
-        # Create Lagrangian numerically
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
         L = L.evalf()
 
-        # Build system numerically
         system = []
         for v in variables:
             system.append(diff(L, v).evalf())
         for constraint in constraints:
             system.append((constraint.lhs - constraint.rhs).evalf())
 
-        # Solve numerically
         all_symbols = list(variables) + list(lambdas)
-        guess = [1.0] * len(all_symbols)  # initial guess
+        guess = [1.0] * len(all_symbols)
         sol = nsolve(system, all_symbols, guess)
 
         sol_dict = dict(zip(all_symbols, sol))
 
-        # Apply positivity filtering
         meets_positivity = True
         for v in var_names:
             if positivity_requirements[v]:
@@ -96,7 +82,6 @@ if st.button("Solve"):
         if not meets_positivity:
             st.error("The solution does not satisfy the positivity constraints.")
         else:
-            # Display the solution
             st.success(f"Solution ({optimization_type}):")
 
             point_vars = []
@@ -121,8 +106,8 @@ if st.button("Solve"):
                 st.write("**Lagrange multipliers:**")
                 st.latex(r" \\ ".join(lambdas_display))
 
-            obj_value = f.subs(sol_dict).evalf(6)
-            st.write(f"**Objective function value:**")
+            obj_value = f.evalf(subs=sol_dict, n=6)  # <--- this is the correct fix
+            st.write("**Objective function value:**")
             st.latex(latex(obj_value))
             st.markdown("---")
 
