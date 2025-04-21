@@ -14,7 +14,7 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
 - Constraints must use `=`
 - Separate variables by commas (e.g., `x, y, z`)
 - If no second constraint, leave it blank
-- Outputs include **exact values** and **decimal approximations**.
+- Solutions include **exact values** and **decimal approximations**.
     """)
 
 # User Inputs
@@ -90,35 +90,35 @@ if st.button("Solve"):
 
                 st.write(f"**Solution {idx}:**")
 
-                # Exact and Decimal Display
+                # Exact Values
                 exact_display = []
-                decimal_display = []
-
                 for var in all_symbols:
                     if var in sol:
                         var_name = latex(var)
                         var_value = sol[var]
-                        var_value_decimal = var_value.evalf(6)
-
                         if var_name.startswith('lam'):
                             number = var_name[3:]
                             var_name = f"\\lambda_{{{number}}}"
                         exact_display.append(f"{var_name} = {latex(var_value)}")
-                        decimal_display.append(f"{var_name} ≈ {var_value_decimal}")
-
+                
                 st.write("**Exact Values:**")
                 st.latex(r" \\ ".join(exact_display))
 
+                # Decimal Approximations
                 st.write("**Decimal Approximations:**")
-                st.latex(r" \\ ".join(decimal_display))
+                for var in all_symbols:
+                    if var in sol:
+                        var_name = str(var)
+                        value_decimal = sol[var].evalf()
+                        st.write(f"{var_name} ≈ {value_decimal:.6f}")
 
-                # Objective function value
+                # Objective function
                 obj_value_exact = f.subs(sol)
-                obj_value_decimal = obj_value_exact.evalf(6)
+                obj_value_decimal = obj_value_exact.evalf()
 
                 st.write("**Objective function value:**")
                 st.latex(f"\\text{{Exact: }} {latex(obj_value_exact)}")
-                st.latex(f"\\text{{Approx: }} {obj_value_decimal}")
+                st.write(f"Approx: {obj_value_decimal:.6f}")
                 st.markdown("---")
 
     except Exception as e:
