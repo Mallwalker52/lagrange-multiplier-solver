@@ -1,43 +1,33 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, Eq, sympify, latex, nsolve, Matrix
-from sympy.core.sympify import SympifyError
+from sympy import symbols, diff, Eq, solve, sympify, latex
 
 st.title("Lagrange Multipliers Solver")
 
-# Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
-- **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
-- **Exponents:** use `^` for powers (e.g., `x^2` means x squared).  
-  - Decimal exponents like `x^(0.4)` are supported automatically.
-- **Square Roots:** write as `(expression)^(1/2)` (e.g., `(x*y)^(1/2)` means √(xy))
-- **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
-- **Variables** must be separated by commas (e.g., `x, y, z`)
-- **If you have no second constraint**, leave it blank
-- The app automatically handles `^` by converting it internally to Python powers
-- **Note:** All answers will be approximate decimals for faster solving.
-
-If you follow these rules, you should have no issues. Happy solving! 🚀
+- Use explicit multiplication: `2*(x*y)`, not `2(xy)`
+- Use `^` for powers (e.g., `x^2`)
+- Fractional powers like `x^(0.4)` are allowed
+- Constraints must use `=`
+- Separate variables by commas (e.g., `x, y, z`)
+- If no second constraint, leave it blank
+- Outputs include **exact values** and **decimal approximations**.
     """)
 
-st.write("Fill out your function, variables, and constraint(s) below:")
-
-# Form inputs
+# User Inputs
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
-vars_input = st.text_input("Variables (comma-separated, e.g., x, y, z)", value="x, y, z")
-constraint1_input = st.text_input("Constraint 1 (required, e.g., x + y + z = 1)", value="x + y + z = 1")
-constraint2_input = st.text_input("Constraint 2 (optional, e.g., x - y = 0)", value="")
+vars_input = st.text_input("Variables (comma-separated)", value="x, y, z")
+constraint1_input = st.text_input("Constraint 1 (required)", value="x + y + z = 1")
+constraint2_input = st.text_input("Constraint 2 (optional)", value="")
 
 optimization_type = st.radio("Do you want to minimize or maximize?", ("Minimize", "Maximize"))
 
-# Parse variables early so we can add positivity checkboxes
 var_names = [v.strip() for v in vars_input.split(",") if v.strip()]
 variables = symbols(var_names)
 
-# Add positivity checkboxes dynamically
 st.write("**Optional: Require variables to be positive (≥ 0)**")
 positivity_requirements = {}
 for v in var_names:
@@ -45,93 +35,91 @@ for v in var_names:
 
 if st.button("Solve"):
     try:
-        # Preprocess input
+        # Preprocessing
         f_input = f_input.replace("^", "**")
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
 
-        # Parse function
-        original_f = sympify(f_input, rational=True)
+        f = sympify(f_input)
 
-        # Adjust function based on optimization type
-        f = original_f
-
-        # Parse constraints
         constraints = []
         if constraint1_input:
             if "=" in constraint1_input:
                 left, right = constraint1_input.split("=")
-                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+                constraints.append(Eq(sympify(left), sympify(right)))
             else:
-                constraints.append(Eq(sympify(constraint1_input, rational=True), 0))
+                constraints.append(Eq(sympify(constraint1_input), 0))
         if constraint2_input:
             if "=" in constraint2_input:
                 left, right = constraint2_input.split("=")
-                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+                constraints.append(Eq(sympify(left), sympify(right)))
             else:
-                constraints.append(Eq(sympify(constraint2_input, rational=True), 0))
+                constraints.append(Eq(sympify(constraint2_input), 0))
 
-        # Create Lagrangian
+        # Lagrangian
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
 
-        # Set up system of equations
+        # System of equations
         system = []
         for v in variables:
             system.append(diff(L, v))
         for constraint in constraints:
             system.append(constraint.lhs - constraint.rhs)
 
-        # Solve using nsolve (numerical)
         all_symbols = list(variables) + list(lambdas)
-        guess = [1]*len(all_symbols)
+        solutions = solve(system, all_symbols, dict=True)
 
-        # Try to solve
-        sol = nsolve(system, all_symbols, guess)
-        sol_dict = dict(zip(all_symbols, sol))
-
-        # Apply positivity filtering
-        meets_positivity = True
-        for v in var_names:
-            if positivity_requirements[v]:
-                if sol_dict[symbols(v)] < 0:
-                    meets_positivity = False
-                    break
-
-        if not meets_positivity:
-            st.error("The solution does not satisfy the positivity constraints.")
+        if not solutions:
+            st.error("No solutions found.")
         else:
-            # Display the solution
             st.success(f"Solution ({optimization_type}):")
 
-            point_vars = []
-            point_vals = []
-            lambdas_display = []
+            for idx, sol in enumerate(solutions, 1):
+                # Check positivity
+                meets_positivity = True
+                for v in var_names:
+                    if positivity_requirements[v]:
+                        if sol[symbols(v)].evalf() < 0:
+                            meets_positivity = False
+                            break
+                if not meets_positivity:
+                    continue
 
-            for var in all_symbols:
-                var_name = latex(var)
-                value = latex(sol_dict[var].evalf(6))
-                if var_name.startswith('lam'):
-                    number = var_name[3:]
-                    var_name = f"\\lambda_{{{number}}}"
-                    lambdas_display.append(f"{var_name} = {value}")
-                else:
-                    point_vars.append(var_name)
-                    point_vals.append(value)
+                st.write(f"**Solution {idx}:**")
 
-            ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
-            st.latex(ordered_pair_latex)
+                # Exact and Decimal Display
+                exact_display = []
+                decimal_display = []
 
-            if lambdas_display:
-                st.write("**Lagrange multipliers:**")
-                st.latex(r" \\ ".join(lambdas_display))
+                for var in all_symbols:
+                    if var in sol:
+                        var_name = latex(var)
+                        var_value = sol[var]
+                        var_value_decimal = var_value.evalf(6)
 
-            obj_value = original_f.subs(sol_dict)
-            st.write(f"**Objective function value:**")
-            st.latex(latex(obj_value.evalf(6)))
-            st.markdown("---")
+                        if var_name.startswith('lam'):
+                            number = var_name[3:]
+                            var_name = f"\\lambda_{{{number}}}"
+                        exact_display.append(f"{var_name} = {latex(var_value)}")
+                        decimal_display.append(f"{var_name} ≈ {var_value_decimal}")
+
+                st.write("**Exact Values:**")
+                st.latex(r" \\ ".join(exact_display))
+
+                st.write("**Decimal Approximations:**")
+                st.latex(r" \\ ".join(decimal_display))
+
+                # Objective function value
+                obj_value_exact = f.subs(sol)
+                obj_value_decimal = obj_value_exact.evalf(6)
+
+                st.write("**Objective function value:**")
+                st.latex(f"\\text{{Exact: }} {latex(obj_value_exact)}")
+                st.latex(f"\\text{{Approx: }} {obj_value_decimal}")
+                st.markdown("---")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
