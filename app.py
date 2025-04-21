@@ -1,7 +1,7 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, Eq, nsolve, sympify, latex
+from sympy import symbols, diff, Eq, solve, sympify, latex
 
 st.title("Lagrange Multipliers Solver")
 
@@ -14,7 +14,7 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
 - Constraints must use `=`
 - Separate variables by commas (e.g., `x, y, z`)
 - If no second constraint, leave it blank
-- Solutions are given as **decimal approximations**.
+- Outputs include **exact values** and **decimal approximations**.
     """)
 
 # User Inputs
@@ -40,89 +40,86 @@ if st.button("Solve"):
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
 
-        f = sympify(f_input).evalf()
+        f = sympify(f_input)
 
         constraints = []
         if constraint1_input:
             if "=" in constraint1_input:
                 left, right = constraint1_input.split("=")
-                constraints.append(Eq(sympify(left).evalf(), sympify(right).evalf()))
+                constraints.append(Eq(sympify(left), sympify(right)))
             else:
-                constraints.append(Eq(sympify(constraint1_input).evalf(), 0))
+                constraints.append(Eq(sympify(constraint1_input), 0))
         if constraint2_input:
             if "=" in constraint2_input:
                 left, right = constraint2_input.split("=")
-                constraints.append(Eq(sympify(left).evalf(), sympify(right).evalf()))
+                constraints.append(Eq(sympify(left), sympify(right)))
             else:
-                constraints.append(Eq(sympify(constraint2_input).evalf(), 0))
+                constraints.append(Eq(sympify(constraint2_input), 0))
 
         # Lagrangian
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
-        L = L.evalf()
 
         # System of equations
         system = []
         for v in variables:
-            system.append(diff(L, v).evalf())
+            system.append(diff(L, v))
         for constraint in constraints:
-            system.append((constraint.lhs - constraint.rhs).evalf())
+            system.append(constraint.lhs - constraint.rhs)
 
         all_symbols = list(variables) + list(lambdas)
-        guess = [1.0] * len(all_symbols)
-        sol = nsolve(system, all_symbols, guess)
+        solutions = solve(system, all_symbols, dict=True)
 
-        # Force all numeric now
-        sol_dict = dict(zip(all_symbols, sol))
-        float_sol_dict = {var: float(val.evalf()) for var, val in sol_dict.items()}
-
-        # Positivity filtering
-        meets_positivity = True
-        for v in var_names:
-            if positivity_requirements[v]:
-                if float_sol_dict[symbols(v)] < 0:
-                    meets_positivity = False
-                    break
-
-        if not meets_positivity:
-            st.error("The solution does not satisfy the positivity constraints.")
+        if not solutions:
+            st.error("No solutions found.")
         else:
             st.success(f"Solution ({optimization_type}):")
 
-            # Display ordered pair/triple
-            point_vars = []
-            point_vals = []
-            lambdas_display = []
+            for idx, sol in enumerate(solutions, 1):
+                # Check positivity
+                meets_positivity = True
+                for v in var_names:
+                    if positivity_requirements[v]:
+                        if sol[symbols(v)].evalf() < 0:
+                            meets_positivity = False
+                            break
+                if not meets_positivity:
+                    continue
 
-            for var in all_symbols:
-                var_name = latex(var)
-                value_num = float(float_sol_dict[var])
-                value_str = f"{value_num:.6f}"
-                if var_name.startswith('lam'):
-                    number = var_name[3:]
-                    var_name = f"\\lambda_{{{number}}}"
-                    lambdas_display.append(f"{var_name} = {value_str}")
-                else:
-                    point_vars.append(var_name)
-                    point_vals.append(value_str)
+                st.write(f"**Solution {idx}:**")
 
-            ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
-            st.latex(ordered_pair_latex)
+                # Exact and Decimal Display
+                exact_display = []
+                decimal_display = []
 
-            if lambdas_display:
-                st.write("**Lagrange multipliers:**")
-                st.latex(r" \\ ".join(lambdas_display))
+                for var in all_symbols:
+                    if var in sol:
+                        var_name = latex(var)
+                        var_value = sol[var]
+                        var_value_decimal = var_value.evalf(6)
 
-            # Objective function value
-            obj_value = f.subs(float_sol_dict)
-            obj_value_num = float(obj_value)
-            obj_value_str = f"{obj_value_num:.6f}"
+                        if var_name.startswith('lam'):
+                            number = var_name[3:]
+                            var_name = f"\\lambda_{{{number}}}"
+                        exact_display.append(f"{var_name} = {latex(var_value)}")
+                        decimal_display.append(f"{var_name} ≈ {var_value_decimal}")
 
-            st.write("**Objective function value:**")
-            st.latex(obj_value_str)
-            st.markdown("---")
+                st.write("**Exact Values:**")
+                st.latex(r" \\ ".join(exact_display))
+
+                st.write("**Decimal Approximations:**")
+                st.latex(r" \\ ".join(decimal_display))
+
+                # Objective function value
+                obj_value_exact = f.subs(sol)
+                obj_value_decimal = obj_value_exact.evalf(6)
+
+                st.write("**Objective function value:**")
+                st.latex(f"\\text{{Exact: }} {latex(obj_value_exact)}")
+                st.latex(f"\\text{{Approx: }} {obj_value_decimal}")
+                st.markdown("---")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
