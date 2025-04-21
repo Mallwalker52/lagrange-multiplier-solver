@@ -3,14 +3,15 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify, latex
 
-st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
+st.title("Lagrange Multipliers Solver")
 
 # Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
 - **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
-- **Exponents:** use `^` for powers (e.g., `x^2` means x squared)
+- **Exponents:** use `^` for powers (e.g., `x^2` means x squared).  
+  - Decimal exponents like `x^(0.4)` are supported automatically.
 - **Square Roots:** write as `(expression)^(1/2)` (e.g., `(x*y)^(1/2)` means √(xy))
 - **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
 - **Variables** must be separated by commas (e.g., `x, y, z`)
@@ -48,7 +49,7 @@ if st.button("Solve"):
         constraint2_input = constraint2_input.replace("^", "**")
 
         # Parse function
-        original_f = sympify(f_input)
+        original_f = sympify(f_input, rational=True)  # rationalize floats
 
         # Adjust function based on optimization type
         f = original_f
@@ -58,15 +59,15 @@ if st.button("Solve"):
         if constraint1_input:
             if "=" in constraint1_input:
                 left, right = constraint1_input.split("=")
-                constraints.append(Eq(sympify(left), sympify(right)))
+                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
             else:
-                constraints.append(Eq(sympify(constraint1_input), 0))
+                constraints.append(Eq(sympify(constraint1_input, rational=True), 0))
         if constraint2_input:
             if "=" in constraint2_input:
                 left, right = constraint2_input.split("=")
-                constraints.append(Eq(sympify(left), sympify(right)))
+                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
             else:
-                constraints.append(Eq(sympify(constraint2_input), 0))
+                constraints.append(Eq(sympify(constraint2_input, rational=True), 0))
 
         # Create Lagrangian
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
