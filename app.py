@@ -3,7 +3,7 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify, latex
 
-st.title("Lagrange Multipliers Solver")
+st.title("Flexible Lagrange Multipliers Solver (Minimize or Maximize)")
 
 # Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
@@ -105,11 +105,33 @@ if st.button("Solve"):
             st.success(f"Best Solution(s) ({optimization_type}):")
             for idx, sol in enumerate(best_solutions, 1):
                 st.write(f"**Solution {idx}:**")
-                display_latex = []
+
+                # Prepare ordered tuple for (x, y) or (x, y, z)
+                point_vars = []
+                point_vals = []
+                lambdas_display = []
+
                 for var in all_symbols:
                     if var in sol:
-                        display_latex.append(f"{latex(var)} = {latex(sol[var])}")
-                st.latex(r" \\ ".join(display_latex))
+                        var_name = latex(var)
+                        value = latex(sol[var])
+                        if var_name.startswith('lam'):
+                            number = var_name[3:]
+                            var_name = f"\\lambda_{{{number}}}"
+                            lambdas_display.append(f"{var_name} = {value}")
+                        else:
+                            point_vars.append(var_name)
+                            point_vals.append(value)
+
+                # Show (x, y) = (value1, value2)
+                ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
+                st.latex(ordered_pair_latex)
+
+                # Show lambdas underneath
+                if lambdas_display:
+                    st.write("**Lagrange multipliers:**")
+                    st.latex(r" \\ ".join(lambdas_display))
+
                 st.write(f"**Objective function value:**")
                 st.latex(latex(best_value))
                 st.markdown("---")
