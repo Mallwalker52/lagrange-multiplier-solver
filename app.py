@@ -1,7 +1,7 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, Eq, solve, sympify, latex
+from sympy import symbols, diff, Eq, solve, sympify
 
 st.title("Lagrange Multipliers Solver")
 
@@ -14,24 +14,19 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
 - Constraints must use `=`
 - Separate variables by commas (e.g., `x, y, z`)
 - If no second constraint, leave it blank
-- Solutions include **exact values** and **decimal approximations**.
+- Solutions will display using SymPy's default formatting (exact or decimal where appropriate).
     """)
 
 # User Inputs
-f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
-vars_input = st.text_input("Variables (comma-separated)", value="x, y, z")
-constraint1_input = st.text_input("Constraint 1 (required)", value="x + y + z = 1")
+f_input = st.text_input("Objective Function", value="x^2 + y^2")
+vars_input = st.text_input("Variables (comma-separated)", value="x, y")
+constraint1_input = st.text_input("Constraint 1 (required)", value="x + y = 1")
 constraint2_input = st.text_input("Constraint 2 (optional)", value="")
 
 optimization_type = st.radio("Do you want to minimize or maximize?", ("Minimize", "Maximize"))
 
 var_names = [v.strip() for v in vars_input.split(",") if v.strip()]
 variables = symbols(var_names)
-
-st.write("**Optional: Require variables to be positive (≥ 0)**")
-positivity_requirements = {}
-for v in var_names:
-    positivity_requirements[v] = st.checkbox(f"Require {v} ≥ 0", value=False)
 
 if st.button("Solve"):
     try:
@@ -75,50 +70,17 @@ if st.button("Solve"):
         if not solutions:
             st.error("No solutions found.")
         else:
-            st.success(f"Solution ({optimization_type}):")
+            st.success(f"Solution(s) ({optimization_type}):")
 
             for idx, sol in enumerate(solutions, 1):
-                # Check positivity
-                meets_positivity = True
-                for v in var_names:
-                    if positivity_requirements[v]:
-                        if sol[symbols(v)].evalf() < 0:
-                            meets_positivity = False
-                            break
-                if not meets_positivity:
-                    continue
-
                 st.write(f"**Solution {idx}:**")
-
-                # Exact Values
-                exact_display = []
                 for var in all_symbols:
                     if var in sol:
-                        var_name = latex(var)
-                        var_value = sol[var]
-                        if var_name.startswith('lam'):
-                            number = var_name[3:]
-                            var_name = f"\\lambda_{{{number}}}"
-                        exact_display.append(f"{var_name} = {latex(var_value)}")
-                
-                st.write("**Exact Values:**")
-                st.latex(r" \\ ".join(exact_display))
+                        st.write(f"{var} = {sol[var]}")
 
-                # Decimal Approximations
-                st.write("**Decimal Approximations:**")
-                for var in all_symbols:
-                    if var in sol:
-                        var_name = str(var)
-                        value_decimal = sol[var].evalf()
-                        st.write(f"{var_name} ≈ {value_decimal:.6f}")
-
-                # Objective function
-                obj_value_exact = f.subs(sol)
-                obj_value_decimal = obj_value_exact.evalf()
-
-                st.write("**Objective function value:**")
-                st.latex(f"\\text{{Exact: }} {latex(obj_value_exact)}")
-                st.write(f"Approx: {obj_value_decimal:.6f}")
+                # Objective function value
+                obj_value = f.subs(sol)
+                st.write(f"Objective function value: {obj_value}")
                 st.markdown("---")
 
     except Exception as e:
