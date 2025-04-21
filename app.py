@@ -3,7 +3,7 @@
 import streamlit as st
 from sympy import symbols, diff, Eq, solve, sympify
 
-st.title("Lagrange Multipliers Solver")
+st.title("Lagrange Multipliers App")
 
 # Fancy About Section
 with st.expander("ℹ️ About this App"):
