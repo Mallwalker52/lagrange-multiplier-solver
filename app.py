@@ -48,26 +48,25 @@ if st.button("Solve"):
         constraint2_input = constraint2_input.replace("^", "**")
 
         # Parse function
-        original_f = sympify(f_input)
+       original_f = sympify(f_input, rational=True)
 
         # Adjust function based on optimization type
         f = original_f
 
         # Parse constraints
-        constraints = []
-        if constraint1_input:
-            if "=" in constraint1_input:
-                left, right = constraint1_input.split("=")
-                constraints.append(Eq(sympify(left), sympify(right)))
-            else:
-                constraints.append(Eq(sympify(constraint1_input), 0))
-        if constraint2_input:
-            if "=" in constraint2_input:
-                left, right = constraint2_input.split("=")
-                constraints.append(Eq(sympify(left), sympify(right)))
-            else:
-                constraints.append(Eq(sympify(constraint2_input), 0))
-
+constraints = []
+if constraint1_input:
+    if "=" in constraint1_input:
+        left, right = constraint1_input.split("=")
+        constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+    else:
+        constraints.append(Eq(sympify(constraint1_input, rational=True), 0))
+if constraint2_input:
+    if "=" in constraint2_input:
+        left, right = constraint2_input.split("=")
+        constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+    else:
+        constraints.append(Eq(sympify(constraint2_input, rational=True), 0))
         # Create Lagrangian
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
