@@ -3,7 +3,7 @@
 import streamlit as st
 from sympy import symbols, diff, solve, Eq, sympify
 
-st.title("Lagrange Multipliers Calculator")
+st.title("Lagrange Multipliers App")
 
 # Instructions Section
 with st.expander("📚 Instructions (Click to Expand)", expanded=False):
@@ -82,7 +82,7 @@ if st.button("Solve"):
         if not solutions:
             st.error("No solutions found.")
         else:
-            best_solution = None
+            best_solutions = []
             best_value = None
 
             for sol in solutions:
@@ -91,19 +91,25 @@ if st.button("Solve"):
                 if optimization_type == "Minimize":
                     if best_value is None or f_val < best_value:
                         best_value = f_val
-                        best_solution = sol
+                        best_solutions = [sol]
+                    elif f_val == best_value:
+                        best_solutions.append(sol)
                 else:  # Maximize
                     if best_value is None or f_val > best_value:
                         best_value = f_val
-                        best_solution = sol
+                        best_solutions = [sol]
+                    elif f_val == best_value:
+                        best_solutions.append(sol)
 
-            # Display best solution
-            st.success(f"Best Solution ({optimization_type}):")
-            for var in all_symbols:
-                if var in best_solution:
-                    st.write(f"**{var}** = {best_solution[var]}")
-            st.write(f"**Objective function value** = {best_value}")
-            st.markdown("---")
+            # Display all best solutions
+            st.success(f"Best Solution(s) ({optimization_type}):")
+            for idx, sol in enumerate(best_solutions, 1):
+                st.write(f"**Solution {idx}:**")
+                for var in all_symbols:
+                    if var in sol:
+                        st.write(f"  **{var}** = {sol[var]}")
+                st.write(f"**Objective function value** = {best_value}")
+                st.markdown("---")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
