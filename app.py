@@ -1,7 +1,7 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, solve, Eq, sympify
+from sympy import symbols, diff, solve, Eq, sympify, latex
 
 st.title("Lagrange Multipliers Solver")
 
@@ -105,10 +105,13 @@ if st.button("Solve"):
             st.success(f"Best Solution(s) ({optimization_type}):")
             for idx, sol in enumerate(best_solutions, 1):
                 st.write(f"**Solution {idx}:**")
+                display_latex = []
                 for var in all_symbols:
                     if var in sol:
-                        st.write(f"  **{var}** = {sol[var]}")
-                st.write(f"**Objective function value** = {best_value}")
+                        display_latex.append(f"{latex(var)} = {latex(sol[var])}")
+                st.latex(r" \\ ".join(display_latex))
+                st.write(f"**Objective function value:**")
+                st.latex(latex(best_value))
                 st.markdown("---")
 
     except Exception as e:
