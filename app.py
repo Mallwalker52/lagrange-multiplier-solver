@@ -1,8 +1,8 @@
 # app.py
 
 import streamlit as st
-from sympy import symbols, diff, Eq, sympify, latex, nsolve, Matrix
-from sympy.core.sympify import SympifyError
+from sympy import symbols, diff, Eq, nsolve, sympify, latex
+from sympy import Matrix
 
 st.title("Lagrange Multipliers Solver")
 
@@ -11,14 +11,12 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
     st.markdown("""
 **How to Enter Inputs:**
 - **Multiplication** must be explicit: write `2*(x*y)` instead of `2(x*y)` or `2xy`
-- **Exponents:** use `^` for powers (e.g., `x^2` means x squared).  
-  - Decimal exponents like `x^(0.4)` are supported automatically.
-- **Square Roots:** write as `(expression)^(1/2)` (e.g., `(x*y)^(1/2)` means √(xy))
+- **Exponents:** use `^` for powers (e.g., `x^2` means x squared)
+- **Fractional powers** like `x^(0.4)` are fully supported.
 - **Constraints** must use `=` (e.g., `2*(x*y + x*z + y*z) = 48`)
 - **Variables** must be separated by commas (e.g., `x, y, z`)
-- **If you have no second constraint**, leave it blank
-- The app automatically handles `^` by converting it internally to Python powers
-- **Note:** All answers will be approximate decimals for faster solving.
+- **If you have no second constraint**, leave it blank.
+- Solutions will be given as **decimal approximations**.
 
 If you follow these rules, you should have no issues. Happy solving! 🚀
     """)
@@ -28,8 +26,8 @@ st.write("Fill out your function, variables, and constraint(s) below:")
 # Form inputs
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
 vars_input = st.text_input("Variables (comma-separated, e.g., x, y, z)", value="x, y, z")
-constraint1_input = st.text_input("Constraint 1 (required, e.g., x + y + z = 1)", value="x + y + z = 1")
-constraint2_input = st.text_input("Constraint 2 (optional, e.g., x - y = 0)", value="")
+constraint1_input = st.text_input("Constraint 1 (required)", value="x + y + z = 1")
+constraint2_input = st.text_input("Constraint 2 (optional)", value="")
 
 optimization_type = st.radio("Do you want to minimize or maximize?", ("Minimize", "Maximize"))
 
@@ -50,46 +48,41 @@ if st.button("Solve"):
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
 
-        # Parse function
-        original_f = sympify(f_input, rational=True)
-
-        # Adjust function based on optimization type
-        f = original_f
-
-        # Parse constraints
+        # Parse function and constraints numerically
+        f = sympify(f_input).evalf()
         constraints = []
         if constraint1_input:
             if "=" in constraint1_input:
                 left, right = constraint1_input.split("=")
-                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+                constraints.append(Eq(sympify(left).evalf(), sympify(right).evalf()))
             else:
-                constraints.append(Eq(sympify(constraint1_input, rational=True), 0))
+                constraints.append(Eq(sympify(constraint1_input).evalf(), 0))
         if constraint2_input:
             if "=" in constraint2_input:
                 left, right = constraint2_input.split("=")
-                constraints.append(Eq(sympify(left, rational=True), sympify(right, rational=True)))
+                constraints.append(Eq(sympify(left).evalf(), sympify(right).evalf()))
             else:
-                constraints.append(Eq(sympify(constraint2_input, rational=True), 0))
+                constraints.append(Eq(sympify(constraint2_input).evalf(), 0))
 
-        # Create Lagrangian
+        # Create Lagrangian numerically
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
+        L = L.evalf()
 
-        # Set up system of equations
+        # Build system numerically
         system = []
         for v in variables:
-            system.append(diff(L, v))
+            system.append(diff(L, v).evalf())
         for constraint in constraints:
-            system.append(constraint.lhs - constraint.rhs)
+            system.append((constraint.lhs - constraint.rhs).evalf())
 
-        # Solve using nsolve (numerical)
+        # Solve numerically
         all_symbols = list(variables) + list(lambdas)
-        guess = [1]*len(all_symbols)
-
-        # Try to solve
+        guess = [1.0] * len(all_symbols)  # initial guess
         sol = nsolve(system, all_symbols, guess)
+
         sol_dict = dict(zip(all_symbols, sol))
 
         # Apply positivity filtering
@@ -128,9 +121,9 @@ if st.button("Solve"):
                 st.write("**Lagrange multipliers:**")
                 st.latex(r" \\ ".join(lambdas_display))
 
-            obj_value = original_f.subs(sol_dict)
+            obj_value = f.subs(sol_dict).evalf(6)
             st.write(f"**Objective function value:**")
-            st.latex(latex(obj_value.evalf(6)))
+            st.latex(latex(obj_value))
             st.markdown("---")
 
     except Exception as e:
