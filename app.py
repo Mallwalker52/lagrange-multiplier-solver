@@ -13,8 +13,8 @@ with st.expander("📚 Instructions (Click to Expand)", expanded=False):
 - Fractional powers like `x^(0.4)` are allowed
 - Constraints must use `=`
 - Separate variables by commas (e.g., `x, y, z`)
-- If no second constraint, leave blank
-- All solutions will be given as **decimal approximations**.
+- If no second constraint, leave it blank
+- All solutions are given as **decimal approximations** (not exact values).
     """)
 
 f_input = st.text_input("Objective Function (example: x^2 + y^2 + z^2)", value="x^2 + y^2 + z^2")
@@ -34,6 +34,7 @@ for v in var_names:
 
 if st.button("Solve"):
     try:
+        # Preprocessing
         f_input = f_input.replace("^", "**")
         constraint1_input = constraint1_input.replace("^", "**")
         constraint2_input = constraint2_input.replace("^", "**")
@@ -54,12 +55,14 @@ if st.button("Solve"):
             else:
                 constraints.append(Eq(sympify(constraint2_input).evalf(), 0))
 
+        # Lagrangian
         lambdas = symbols([f"lam{i+1}" for i in range(len(constraints))])
         L = f
         for lam, constraint in zip(lambdas, constraints):
             L -= lam * (constraint.lhs - constraint.rhs)
         L = L.evalf()
 
+        # System of equations
         system = []
         for v in variables:
             system.append(diff(L, v).evalf())
@@ -72,10 +75,11 @@ if st.button("Solve"):
 
         sol_dict = dict(zip(all_symbols, sol))
 
+        # Positivity filtering
         meets_positivity = True
         for v in var_names:
             if positivity_requirements[v]:
-                if sol_dict[symbols(v)] < 0:
+                if float(sol_dict[symbols(v)]) < 0:
                     meets_positivity = False
                     break
 
@@ -84,20 +88,23 @@ if st.button("Solve"):
         else:
             st.success(f"Solution ({optimization_type}):")
 
+            # Display ordered pair/triple
             point_vars = []
             point_vals = []
             lambdas_display = []
 
             for var in all_symbols:
-                var_name = latex(var)
-                value = latex(sol_dict[var].evalf(6))
-                if var_name.startswith('lam'):
-                    number = var_name[3:]
-                    var_name = f"\\lambda_{{{number}}}"
-                    lambdas_display.append(f"{var_name} = {value}")
-                else:
-                    point_vars.append(var_name)
-                    point_vals.append(value)
+                if var in sol_dict:
+                    var_name = latex(var)
+                    value_num = float(sol_dict[var])
+                    value_str = f"{value_num:.6f}"
+                    if var_name.startswith('lam'):
+                        number = var_name[3:]
+                        var_name = f"\\lambda_{{{number}}}"
+                        lambdas_display.append(f"{var_name} = {value_str}")
+                    else:
+                        point_vars.append(var_name)
+                        point_vals.append(value_str)
 
             ordered_pair_latex = "(" + ", ".join(point_vars) + ") = (" + ", ".join(point_vals) + ")"
             st.latex(ordered_pair_latex)
@@ -106,9 +113,13 @@ if st.button("Solve"):
                 st.write("**Lagrange multipliers:**")
                 st.latex(r" \\ ".join(lambdas_display))
 
-            obj_value = f.evalf(subs=sol_dict, n=6)  # <--- this is the correct fix
+            # Objective function value
+            obj_value = f.subs(sol_dict)
+            obj_value_num = float(obj_value)
+            obj_value_str = f"{obj_value_num:.6f}"
+
             st.write("**Objective function value:**")
-            st.latex(latex(obj_value))
+            st.latex(obj_value_str)
             st.markdown("---")
 
     except Exception as e:
